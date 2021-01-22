@@ -90,7 +90,7 @@ rmw_ret_t rmw_uros_options_set_client_key(uint32_t client_key, rmw_init_options_
  */
 rmw_ret_t rmw_uros_check_agent_status(int timeout_ms);
 
-#ifdef UCLIENT_PROFILE_CUSTOM_TRANSPORT
+#ifdef RMW_UXRCE_TRANSPORT_CUSTOM
 /**
  * \brief Check if micro-ROS Agent answers to micro-ROS client
  *
@@ -112,7 +112,7 @@ rmw_ret_t rmw_uros_options_set_custom_transport(
   write_custom_func write_cb,
   read_custom_func read_cb,
   rmw_init_options_t * rmw_options);
-#endif //UCLIENT_PROFILE_CUSTOM_TRANSPORT
+#endif //RMW_UXRCE_TRANSPORT_CUSTOM
 
 #if defined(__cplusplus)
 }

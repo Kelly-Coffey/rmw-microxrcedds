@@ -195,7 +195,7 @@ rmw_ret_t rmw_uros_check_agent_status(int timeout_ms)
   return (synchronized && session_memory.allocateditems != NULL) ? RMW_RET_OK : RMW_RET_ERROR;
 }
 
-#ifdef UCLIENT_PROFILE_CUSTOM_TRANSPORT
+#ifdef RMW_UXRCE_TRANSPORT_CUSTOM
 rmw_ret_t rmw_uros_options_set_custom_transport(
   bool framing,
   void * args,
@@ -223,4 +223,4 @@ rmw_ret_t rmw_uros_options_set_custom_transport(
   }
   return RMW_RET_OK;
 }
-#endif //UCLIENT_PROFILE_CUSTOM_TRANSPORT
+#endif //RMW_UXRCE_TRANSPORT_CUSTOM
