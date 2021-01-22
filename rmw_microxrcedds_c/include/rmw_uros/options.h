@@ -17,6 +17,7 @@
 
 #include <rmw/ret_types.h>
 #include <rmw/init_options.h>
+#include <uxr/client/client.h>
 
 #if defined(__cplusplus)
 extern "C"
@@ -88,6 +89,30 @@ rmw_ret_t rmw_uros_options_set_client_key(uint32_t client_key, rmw_init_options_
  * \return RMW_RET_ERROR If micro-ROS Agent is not available.
  */
 rmw_ret_t rmw_uros_check_agent_status(int timeout_ms);
+
+#ifdef UCLIENT_PROFILE_CUSTOM_TRANSPORT
+/**
+ * \brief Check if micro-ROS Agent answers to micro-ROS client
+ *
+ * \param[in] framing Enable XRCE framing.
+ * \param[in] args Arguments for open function.
+ * \param[in] open_cb Open transport callback.
+ * \param[in] close_cb Close transport callback.
+ * \param[in] write_cb Write transport callback.
+ * \param[in] read_cb Read transport callback.
+ * \param[in,out] rmw_options Updated options with rmw specifics.
+ * \return RMW_RET_OK If correct.
+ * \return RMW_RET_ERROR If invalid.
+ */
+rmw_ret_t rmw_uros_options_set_custom_transport(
+  bool framing,
+  void * args,
+  open_custom_func open_cb,
+  close_custom_func close_cb,
+  write_custom_func write_cb,
+  read_custom_func read_cb,
+  rmw_init_options_t * rmw_options);
+#endif //UCLIENT_PROFILE_CUSTOM_TRANSPORT
 
 #if defined(__cplusplus)
 }

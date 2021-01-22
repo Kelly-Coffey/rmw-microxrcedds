@@ -76,6 +76,7 @@ set(RMW_UXRCE_TRANSPORT_UDP OFF)
 set(RMW_UXRCE_TRANSPORT_CUSTOM_SERIAL OFF)
 set(RMW_UXRCE_TRANSPORT_IPV4 OFF)
 set(RMW_UXRCE_TRANSPORT_IPV6 OFF)
+set(RMW_UXRCE_TRANSPORT_CUSTOM OFF)
 if(${RMW_UXRCE_TRANSPORT} STREQUAL "serial")
   set(RMW_UXRCE_TRANSPORT_SERIAL ON)
   set(RMW_UXRCE_DEFAULT_SERIAL_DEVICE "/dev/ttyAMA0" CACHE STRING "Sets the agent serial port.")
@@ -91,6 +92,8 @@ elseif(${RMW_UXRCE_TRANSPORT} STREQUAL "udp")
   set(RMW_UXRCE_DEFAULT_UDP_PORT "8888" CACHE STRING "Sets the agent IP port.")
 elseif(${RMW_UXRCE_TRANSPORT} STREQUAL "custom_serial")
   set(RMW_UXRCE_TRANSPORT_CUSTOM_SERIAL ON)
+elseif(${RMW_UXRCE_TRANSPORT} STREQUAL "custom")
+  set(RMW_UXRCE_TRANSPORT_CUSTOM ON)
 else()
   message(FATAL_ERROR "Transport not supported. Use \"serial\", \"udp\", \"custom\"")
 endif()
@@ -109,6 +112,14 @@ endif()
 # Create source files with the define
 configure_file(${PROJECT_SOURCE_DIR}/src/config.h.in
   ${PROJECT_BINARY_DIR}/include/rmw_microxrcedds_c/config.h)
+
+# Install config.h file.
+install(
+  FILES
+    ${PROJECT_BINARY_DIR}/include/rmw_microxrcedds_c/config.h
+  DESTINATION
+    include/rmw_microxrcedds_c
+  )
 
 set(SRCS
   src/identifiers.c
@@ -255,14 +266,6 @@ if(BUILD_TESTING)
 endif()
 
 ament_package()
-
-# Install config.h file.
-install(
-  FILES
-    ${PROJECT_BINARY_DIR}/include/rmw_microxrcedds_c/config.h
-  DESTINATION
-    include/rmw_microxrcedds_c
-  )
 
 # Install includes.
 install(

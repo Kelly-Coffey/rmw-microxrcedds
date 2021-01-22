@@ -26,6 +26,10 @@
 #include <rmw/allocators.h>
 #include <uxr/client/util/time.h>
 
+#ifdef RMW_UXRCE_TRANSPORT_CUSTOM
+#include <uxr/client/profile/transport/custom/custom_transport.h>
+#endif //RMW_UXRCE_TRANSPORT_CUSTOM
+
 #include "./callbacks.h"
 
 #ifdef RMW_UXRCE_GRAPH
@@ -42,6 +46,8 @@
 #define CLOSE_TRANSPORT(transport) uxr_close_serial_transport(transport)
 #elif defined(RMW_UXRCE_TRANSPORT_UDP)
 #define CLOSE_TRANSPORT(transport) uxr_close_udp_transport(transport)
+#elif defined(RMW_UXRCE_TRANSPORT_CUSTOM)
+#define CLOSE_TRANSPORT(transport) uxr_close_custom_transport(transport)
 #else
 #define CLOSE_TRANSPORT(transport)
 #endif
@@ -70,32 +76,37 @@ rmw_init_options_init(rmw_init_options_t * init_options, rcutils_allocator_t all
 
 #if defined(RMW_UXRCE_TRANSPORT_SERIAL) || defined(RMW_UXRCE_TRANSPORT_CUSTOM_SERIAL)
   if (strlen(RMW_UXRCE_DEFAULT_SERIAL_DEVICE) <= MAX_SERIAL_DEVICE) {
-    strcpy(init_options->impl->connection_params.serial_device, RMW_UXRCE_DEFAULT_SERIAL_DEVICE);
+    strcpy(init_options->impl->transport_params.serial_device, RMW_UXRCE_DEFAULT_SERIAL_DEVICE);
   } else {
     RMW_SET_ERROR_MSG("default serial port configuration overflow");
     return RMW_RET_INVALID_ARGUMENT;
   }
 #elif defined(RMW_UXRCE_TRANSPORT_UDP)
   if (strlen(RMW_UXRCE_DEFAULT_UDP_IP) <= MAX_IP_LEN) {
-    strcpy(init_options->impl->connection_params.agent_address, RMW_UXRCE_DEFAULT_UDP_IP);
+    strcpy(init_options->impl->transport_params.agent_address, RMW_UXRCE_DEFAULT_UDP_IP);
   } else {
     RMW_SET_ERROR_MSG("default ip configuration overflow");
     return RMW_RET_INVALID_ARGUMENT;
   }
 
   if (strlen(RMW_UXRCE_DEFAULT_UDP_PORT) <= MAX_PORT_LEN) {
-    strcpy(init_options->impl->connection_params.agent_port, RMW_UXRCE_DEFAULT_UDP_PORT);
+    strcpy(init_options->impl->transport_params.agent_port, RMW_UXRCE_DEFAULT_UDP_PORT);
   } else {
     RMW_SET_ERROR_MSG("default port configuration overflow");
     return RMW_RET_INVALID_ARGUMENT;
   }
+#elif defined(RMW_UXRCE_TRANSPORT_CUSTOM)
+  init_options->impl->transport_params.open_cb = NULL;
+  init_options->impl->transport_params.close_cb = NULL;
+  init_options->impl->transport_params.write_cb = NULL;
+  init_options->impl->transport_params.read_cb = NULL;
 #endif
 
   srand(uxr_nanos());
 
   do {
-    init_options->impl->connection_params.client_key = rand();
-  } while (init_options->impl->connection_params.client_key == 0);
+    init_options->impl->transport_params.client_key = rand();
+  } while (init_options->impl->transport_params.client_key == 0);
 
   return RMW_RET_OK;
 }
@@ -163,18 +174,14 @@ rmw_init(const rmw_init_options_t * options, rmw_context_t * context)
 
   rmw_context_impl_t * context_impl = (rmw_context_impl_t *)memory_node->data;
 
-  #if defined(RMW_UXRCE_TRANSPORT_SERIAL) || defined(RMW_UXRCE_TRANSPORT_CUSTOM_SERIAL)
-  strcpy(
-    context_impl->connection_params.serial_device,
-    options->impl->connection_params.serial_device);
-  #elif defined(RMW_UXRCE_TRANSPORT_UDP)
-  strcpy(
-    context_impl->connection_params.agent_address,
-    options->impl->connection_params.agent_address);
-  strcpy(context_impl->connection_params.agent_port, options->impl->connection_params.agent_port);
-  #endif
-
-  context_impl->connection_params.client_key = options->impl->connection_params.client_key;
+  #if defined(RMW_UXRCE_TRANSPORT_CUSTOM)
+  uxr_set_custom_transport_callbacks(&context_impl->transport,
+                                     options->impl->transport_params.framing,
+                                     options->impl->transport_params.open_cb,
+                                     options->impl->transport_params.close_cb,
+                                     options->impl->transport_params.write_cb,
+                                     options->impl->transport_params.read_cb);
+  #endif //RMW_UXRCE_TRANSPORT_CUSTOM
 
   context_impl->id_participant = 0;
   context_impl->id_topic = 0;
@@ -202,7 +209,7 @@ rmw_init(const rmw_init_options_t * options, rmw_context_t * context)
   // Micro-XRCE-DDS Client initialization
 
 #ifdef RMW_UXRCE_TRANSPORT_SERIAL
-  int fd = open(context->impl->connection_params.serial_device, O_RDWR | O_NOCTTY);
+  int fd = open(context->impl->transport_params.serial_device, O_RDWR | O_NOCTTY);
   if (0 < fd) {
     struct termios tty_config;
     memset(&tty_config, 0, sizeof(tty_config));
@@ -255,7 +262,7 @@ rmw_init(const rmw_init_options_t * options, rmw_context_t * context)
       }
     }
   }
-  printf("Serial mode => dev: %s\n", context_impl->connection_params.serial_device);
+  printf("Serial mode => dev: %s\n", options->impl->transport_params.serial_device);
 
 #elif defined(RMW_UXRCE_TRANSPORT_UDP)
   // TODO(Borja) Think how we are going to select transport to use
@@ -267,18 +274,18 @@ rmw_init(const rmw_init_options_t * options, rmw_context_t * context)
 
   if (!uxr_init_udp_transport(
       &context_impl->transport, &context_impl->udp_platform, ip_protocol,
-      context_impl->connection_params.agent_address, context_impl->connection_params.agent_port))
+      options->impl->transport_params.agent_address, options->impl->transport_params.agent_port))
   {
     RMW_SET_ERROR_MSG("Can not create an udp connection");
     return RMW_RET_ERROR;
   }
   printf(
-    "UDP mode => ip: %s - port: %s\n", context_impl->connection_params.agent_address,
-    context_impl->connection_params.agent_port);
+    "UDP mode => ip: %s - port: %s\n", options->impl->transport_params.agent_address,
+    options->impl->transport_params.agent_port);
 #elif defined(RMW_UXRCE_TRANSPORT_CUSTOM_SERIAL)
   int pseudo_fd = 0;
-  if (strlen(options->impl->connection_params.serial_device) > 0) {
-    pseudo_fd = atoi(options->impl->connection_params.serial_device);
+  if (strlen(options->impl->transport_params.serial_device) > 0) {
+    pseudo_fd = atoi(options->impl->transport_params.serial_device);
   }
 
   if (!uxr_init_serial_transport(
@@ -288,11 +295,17 @@ rmw_init(const rmw_init_options_t * options, rmw_context_t * context)
     RMW_SET_ERROR_MSG("Can not create an custom serial connection");
     return RMW_RET_ERROR;
   }
+#elif defined(RMW_UXRCE_TRANSPORT_CUSTOM)
+  if (!uxr_init_custom_transport(&context_impl->transport, options->impl->transport_params.args))
+  {
+    RMW_SET_ERROR_MSG("Can not create an custom connection");
+    return RMW_RET_ERROR;
+  }
 #endif
 
   uxr_init_session(
     &context_impl->session, &context_impl->transport.comm,
-    context_impl->connection_params.client_key);
+    options->impl->transport_params.client_key);
 
   uxr_set_topic_callback(&context_impl->session, on_topic, (void *)(context_impl));
   uxr_set_status_callback(&context_impl->session, on_status, NULL);
