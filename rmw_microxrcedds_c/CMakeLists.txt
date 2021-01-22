@@ -113,14 +113,6 @@ endif()
 configure_file(${PROJECT_SOURCE_DIR}/src/config.h.in
   ${PROJECT_BINARY_DIR}/include/rmw_microxrcedds_c/config.h)
 
-# Install config.h file.
-install(
-  FILES
-    ${PROJECT_BINARY_DIR}/include/rmw_microxrcedds_c/config.h
-  DESTINATION
-    include/rmw_microxrcedds_c
-  )
-
 set(SRCS
   src/identifiers.c
   src/memory.c
@@ -237,12 +229,13 @@ target_compile_options(${PROJECT_NAME}
     $<$<C_COMPILER_ID:MSVC>:/Wall>
   )
 
-ament_export_include_directories(${PROJECT_SOURCE_DIR}/include)
+ament_export_include_directories(${CMAKE_INSTALL_PREFIX}/include)
 ament_export_libraries(${PROJECT_NAME})
 
 ament_export_dependencies(
   rcutils
   rmw
+  microxrcedds_client
   )
 
 if(rosidl_typesupport_microxrcedds_c_FOUND)
@@ -273,6 +266,14 @@ install(
     ${PROJECT_SOURCE_DIR}/include/
   DESTINATION
     include
+  )
+
+# Install config.h file.
+install(
+  FILES
+    ${PROJECT_BINARY_DIR}/include/rmw_microxrcedds_c/config.h
+  DESTINATION
+    include/rmw_microxrcedds_c
   )
 
 # Install library.
