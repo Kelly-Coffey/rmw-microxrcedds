@@ -50,8 +50,11 @@ rmw_init_options_init(rmw_init_options_t* init_options, rcutils_allocator_t allo
 
     init_options->instance_id = 0;
     init_options->implementation_identifier = eprosima_microxrcedds_identifier;
-    init_options->allocator = allocator;
-    init_options->enclave   = "/";
+    init_options->allocator        = allocator;
+    init_options->enclave          = "/";
+    init_options->domain_id        = 0;
+    init_options->security_options = rmw_get_default_security_options();
+    init_options->localhost_only   = RMW_LOCALHOST_ONLY_DEFAULT;
 
     init_options->impl = allocator.allocate(sizeof(rmw_init_options_impl_t), allocator.state);
 
@@ -157,6 +160,7 @@ rmw_init(const rmw_init_options_t* options, rmw_context_t* context)
         return RMW_RET_INCORRECT_RMW_IMPLEMENTATION);
     context->instance_id = options->instance_id;
     context->implementation_identifier = eprosima_microxrcedds_identifier;
+    context->actual_domain_id          = options->domain_id;
 
     rmw_uxrce_init_session_memory(&session_memory, custom_sessions, RMW_UXRCE_MAX_SESSIONS);
 
